@@ -55,13 +55,20 @@ https://cadhousefinder.onrender.com/
 
 ## Project Structure
 
-CADHouseFInder/  
-├─ server.js           # Express server and /refresh endpoint  
-├─ package.json        # Dependencies and scripts  
-└─ public/  
-   ├─ index.html       # Main UI template (Pug or static HTML)  
-   ├─ styles.css       # Base & responsive styles  
-   └─ app.js           # Client-side filters, modal & fetch logic  
+CADHouseFInder/
+├─ app.js               # Main Express server & /refresh endpoint
+├─ package.json         # Dependencies & npm scripts
+├─ package-lock.json    # Exact dependency versions
+├─ bin/                 # CLI scripts (if any)
+├─ node_modules/        # Installed packages
+├─ public/              # Static assets served via express.static()
+│  ├─ styles.css        # Base & responsive CSS
+│  └─ [other files…]    # Images, client-side JS (if any), etc.
+├─ routes/              # Route definitions
+│  └─ index.js          # Renders home page and handles /refresh
+└─ views/               # Pug templates
+   ├─ index.jade        # Main UI (filters, tables, modals)
+   └─ error.jade        # 404 / error view
 
 ## How It Works
 
