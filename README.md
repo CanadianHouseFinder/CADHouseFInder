@@ -61,10 +61,46 @@ CADHouseFInder/
 
 ## How It Works
 
-1. The client collects filter settings and sends them via `POST /refresh` to the server.  
-2. The server scrapes listings matching those filters, caches them in memory, and responds.  
-3. The client reloads to render updated tables (one per region), hidden by default.  
-4. Selecting a region shows its table; clicking **Preview** lazy-loads the iframe URL into a modal overlay.
+CAD House Finder is powered by a simple Express server that scrapes REMAX listings, stores them in memory, and serves a dynamic front-end. Here’s the end-to-end flow in plain English:
+
+1. Server Initialization  
+   • When the app starts, it loads default filter values (price range, beds, baths, square footage, house-only flag).  
+   • It then performs an initial “bootstrap” scrape of every defined Canadian region, collecting URLs, prices, bed/bath counts, and addresses into an in-memory store.
+
+2. Defining Regions & Filters  
+   • A fixed list of REMAX base URLs (one per province or territory) lives in the code.  
+   • Filters are kept in a single object that can be updated at runtime. This object drives how query parameters are attached to each base URL.
+
+3. Building Filtered URLs  
+   • Before fetching listings, the server takes a region’s base URL and appends only the non-empty filter parameters (min/max price, bedrooms, etc.).  
+   • This ensures “no minimum” or “no maximum” options work correctly without bloating the URL.
+
+4. Scraping Listings  
+   • The server uses a cookie-aware HTTP client that fakes a modern browser’s User-Agent.  
+   • It fetches the HTML for each region’s filtered page. Optionally, a headless-DOM step can run simple JavaScript if needed.  
+   • Cheerio parses the resulting HTML and extracts each property’s link, price, beds, baths, and address into a JavaScript array.
+
+5. Caching Results  
+   • Scraped data for all regions is stored in a single in-memory object keyed by region name.  
+   • On errors (network timeout or parse issues), that region simply holds an empty list until the next successful scrape.
+
+6. Serving the Front-End  
+   • A Pug template renders the home page. It loops over every region’s cached listings and hides all tables by default.  
+   • The current filter settings are injected so the UI can display them in the form inputs.
+
+7. Refresh Workflow  
+   • When a user submits new filters (“Grab Latest Houses”), the browser sends a POST to `/refresh`.  
+   • The server merges the incoming filters with the defaults and re-runs the bootstrap scrape.  
+   • Once complete, it returns HTTP 200, and the client reloads the page to pick up fresh data.
+
+8. Error Handling & Resilience  
+   • Any invalid route returns a 404 page.  
+   • Unexpected server errors render a friendly error view, with full stack traces only shown in development mode.  
+   • Scraping failures for individual regions do not crash the whole app—they simply log an error and continue.
+
+9. Continuous Operation  
+   • After the initial scrape, the server listens on port 3000 (or the port defined in the environment).  
+   • Every time filters change, the same scrape → cache → render cycle repeats, giving users up-to-date listings with minimal manual effort.
 
 
 ## License
