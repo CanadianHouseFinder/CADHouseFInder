@@ -1,0 +1,225 @@
+
+doctype html
+html
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1")
+    title Alberta & Calgary Property Listings
+    style.
+      /* Base */
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f4f4f4;
+        color: #333;
+      }
+      h1 {
+        text-align: center;
+        margin: 1rem 0;
+      }
+      /* Controls */
+      #refreshBtn, #regionSelect {
+        display: block;
+        margin: 0.5rem auto;
+        padding: 0.6rem 1rem;
+        font-size: 1rem;
+        border: 1px solid #007bff;
+        border-radius: 4px;
+        background: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+      #regionSelect {
+        background: white;
+        color: #333;
+      }
+      #refreshBtn:hover,
+      #regionSelect:hover {
+        opacity: 0.9;
+      }
+      /* Table layout */
+      .table-container {
+        margin: 1rem auto;
+        width: 95%;
+        max-width: 1200px;
+        overflow-x: auto;
+      }
+      table.property-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+        display: none;
+      }
+      th, td {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        text-align: left;
+      }
+      th {
+        background: #007bff;
+        color: white;
+        position: sticky;
+        top: 0;
+      }
+      tr:nth-child(even) {
+        background: #fafafa;
+      }
+      .preview-btn {
+        background: #28a745;
+        border: none;
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .preview-btn:hover {
+        background: #1e7e34;
+      }
+      /* Modal overlay */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-content {
+        position: relative;
+        width: 90%;
+        max-width: 1000px;
+        height: 80%;
+        background: white;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        display: flex;
+        flex-direction: column;
+      }
+      .modal-content iframe {
+        flex: 1;
+        border: none;
+      }
+      .close-btn {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 2rem;
+        height: 2rem;
+        font-size: 1.2rem;
+        line-height: 1.8rem;
+        text-align: center;
+        cursor: pointer;
+      }
+      .close-btn:hover {
+        background: #c82333;
+      }
+      /* Responsive */
+      @media (max-width: 600px) {
+        th, td {
+          padding: 0.5rem;
+        }
+        #refreshBtn, #regionSelect {
+          width: 90%;
+          font-size: 0.9rem;
+        }
+      }
+
+  body
+    h1 Alberta & Calgary Property Listings
+
+    // Refresh button
+    button#refreshBtn(type="button") Grab Latest Houses
+
+    // Region dropdown
+    label(for="regionSelect")
+      strong Select a Region:
+    select#regionSelect
+      option(value="") -- Choose a Region --
+      each listings, region in data
+        option(value=region)= region
+
+    .table-container
+      each listings, region in data
+        - var slug = region.toLowerCase().replace(/[^\w]+/g, '-')
+        table.property-table(id='table-'+slug)
+          thead
+            tr
+              th URL
+              th Price
+              th Beds
+              th Baths
+              th Address
+              th Preview
+          tbody
+            each item, idx in listings
+              tr
+                td
+                  a(href=item.URL, target="_blank")= item.URL
+                td= item.Price
+                td= item.Beds
+                td= item.Baths
+                td= item.Address
+                td
+                  button.preview-btn(
+                    type="button",
+                    data-modal='modal-'+slug+'-'+idx
+                  ) Preview
+                  // Modal overlay
+                  .modal-overlay(id='modal-'+slug+'-'+idx)
+                    .modal-content
+                      button.close-btn(
+                        type="button",
+                        data-modal='modal-'+slug+'-'+idx
+                      ) ×
+                      iframe(
+                        src=item.URL,
+                        allow="autoplay; fullscreen; geolocation; microphone; camera; encrypted-media"
+                      )
+
+    script.
+      (function(){
+        const regionSelect = document.getElementById('regionSelect');
+        const refreshBtn   = document.getElementById('refreshBtn');
+
+        // Show/hide the table
+        regionSelect.addEventListener('change', () => {
+          document.querySelectorAll('table.property-table').forEach(t => t.style.display = 'none');
+          const sel = regionSelect.value.toLowerCase().replace(/[^\w]+/g,'-');
+          const tbl = document.getElementById('table-'+sel);
+          if (tbl) tbl.style.display = 'table';
+        });
+
+        // Modal toggle on preview/close
+        document.body.addEventListener('click', e => {
+          const modalId = e.target.dataset.modal;
+          if (!modalId) return;
+          const overlay = document.getElementById(modalId);
+          if (!overlay) return;
+          overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
+        });
+
+        // Refresh button logic
+        refreshBtn.addEventListener('click', async () => {
+          refreshBtn.disabled = true;
+          refreshBtn.textContent = 'Fetching…';
+          try {
+            const resp = await fetch('/refresh', { method: 'POST' });
+            if (!resp.ok) throw new Error(resp.statusText);
+            window.location.reload();
+          } catch (err) {
+            console.error(err);
+            alert('Failed to refresh listings.');
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = 'Grab Latest Houses';
+          }
+        });
+      })();
