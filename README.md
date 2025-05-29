@@ -4,7 +4,7 @@ A lightweight Node.js web application that scrapes Canadian real-estate listings
 
 Repository: https://github.com/CanadianHouseFinder/CADHouseFInder
 
-## Live Webserver
+## Live Web-Server
 
 https://cadhousefinder.onrender.com/
 
