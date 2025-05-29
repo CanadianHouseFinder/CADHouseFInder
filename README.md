@@ -61,9 +61,6 @@ CADHouseFInder/
 ├─ package-lock.json    # Exact dependency versions
 ├─ bin/                 # CLI scripts (if any)
 ├─ node_modules/        # Installed packages
-├─ public/              # Static assets served via express.static()
-│  ├─ styles.css        # Base & responsive CSS
-│  └─ [other files…]    # Images, client-side JS (if any), etc.
 ├─ routes/              # Route definitions
 │  └─ index.js          # Renders home page and handles /refresh
 └─ views/               # Pug templates
