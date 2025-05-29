@@ -54,7 +54,7 @@ https://cadhousefinder.onrender.com/
 5. Click **Preview** next to any listing to open a modal with the property page
 
 ## Project Structure
-
+```
 CADHouseFInder/
 ├─ app.js               # Main Express server & /refresh endpoint
 ├─ package.json         # Dependencies & npm scripts
@@ -69,7 +69,7 @@ CADHouseFInder/
 └─ views/               # Pug templates
    ├─ index.jade        # Main UI (filters, tables, modals)
    └─ error.jade        # 404 / error view
-
+```
 ## How It Works
 
 CAD House Finder is powered by a simple Express server that scrapes REMAX listings, stores them in memory, and serves a dynamic front-end. Here’s the end-to-end flow in plain English:
