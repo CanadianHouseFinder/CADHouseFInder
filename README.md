@@ -29,21 +29,21 @@ Repository: https://github.com/CanadianHouseFinder/CADHouseFInder
   ```
 
 3. Install dependencies
-   ```sh
-   npm install
-   ```
+  ```sh
+  npm install
+  ```
 
 
 ## Usage
 
 1. Start the server  
-   ```sh
-   npm start
-   ```
+  ```sh
+  npm start
+  ```
 
 2. Open your browser and go to  
    
-   http://localhost:3000
+  http://localhost:3000
    
 3. Set your filters (price, beds, baths, square footage) and click **Grab Latest Houses**  
 4. Choose a region from the dropdown to display its listings table  
