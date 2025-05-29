@@ -5,10 +5,9 @@ var cookieParser  = require('cookie-parser');
 var logger        = require('morgan');
 
 // scraping deps
-// ------------------------------
-// got@14 is ESM-only; in a CommonJS file we grab .default if it exists
-const _got         = require('got');
-const got          = _got.default || _got;
+// got@14 is ESM-only; in CommonJS we grab .default if present
+const _got          = require('got');
+const got           = _got.default || _got;
 const { CookieJar } = require('tough-cookie');
 const cheerio       = require('cheerio');
 const { JSDOM }     = require('jsdom');
@@ -20,17 +19,17 @@ const PORT = process.env.PORT || 3000;
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
-// standard Express middleware
+// standard middleware
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// in-memory store for scraped data
+// in-memory store for scraped results
 const allRegions = {};
 
-// your regions & base URLs
+// region base URLs
 const regions = {
   Alberta:                'https://www.remax.ca/ab?lang=en&pageNumber=1',
   Manitoba:               'https://www.remax.ca/mb/winnipeg-real-estate?lang=en&pageNumber=1',
@@ -44,79 +43,78 @@ const regions = {
   Newfoundland:           'https://www.remax.ca/nl?lang=en&pageNumber=1',
 };
 
-// helper to append filter params
-function buildFilteredUrl(baseUrl) {
+// default, mutable filters
+const defaultFilters = {
+  priceMin:   '100000',
+  priceMax:   '500000',
+  bedsMin:    '3',
+  bedsMax:    '5',
+  bathsIndex: '2',
+  sqftMin:    '1750',
+  sqftMax:    '2500',
+  house:      'true'
+};
+let currentFilters = { ...defaultFilters };
+
+// build URL with query filters
+function buildFilteredUrl(baseUrl, filters) {
   const url = new URL(baseUrl);
-  url.searchParams.set('priceMin',  '100000');
-  url.searchParams.set('priceMax',  '500000');
-  url.searchParams.set('bedsMin',   '3');
-  url.searchParams.set('bedsMax',   '5');
-  url.searchParams.set('bathsIndex','2');
-  url.searchParams.set('sqftMin',   '1750');
-  url.searchParams.set('sqftMax',   '2500');
-  url.searchParams.set('house',     'true');
+  for (const [key, val] of Object.entries(filters)) {
+    if (val !== '' && val != null) url.searchParams.set(key, val);
+  }
   return url.toString();
 }
 
-// core scraping: fetch + parse
-async function scrapeListings(url, useJs = false) {
+// scrape one page given filters
+async function scrapeListings(baseUrl, filters, useJs = false) {
   const jar = new CookieJar();
   const client = got.extend({
     cookieJar: jar,
     headers: {
-      // valid User-Agent string—no funky ellipsis
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
         'AppleWebKit/537.36 (KHTML, like Gecko) ' +
         'Chrome/114.0.0.0 Safari/537.36'
     },
     timeout: { request: 15000 },
-    retry: { limit: 2 },
+    retry:   { limit: 2 },
   });
 
-  // fetch filtered page
-  let resp = await client.get(buildFilteredUrl(url));
-  let html = resp.body;
+  const fullUrl = buildFilteredUrl(baseUrl, filters);
+  const resp    = await client.get(fullUrl);
+  let html      = resp.body;
 
-  // optional jsdom pass if page needs client-side JS
   if (useJs) {
     const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable' });
     await new Promise(r => dom.window.addEventListener('load', r));
     html = dom.serialize();
   }
 
-  // parse with cheerio
   const $   = cheerio.load(html);
   const out = [];
-
   $('a.listing-card_listingCard__lc4CL').each((i, el) => {
     const listing = $(el);
     const href    = listing.attr('href') || '';
-    const fullUrl = href.startsWith('http')
-                  ? href
-                  : `https://www.remax.ca${href}`;
-
+    const full    = href.startsWith('http') ? href : `https://www.remax.ca${href}`;
     out.push({
-      URL:     fullUrl,
+      URL:     full,
       Price:   listing.find('h2.listing-card_price__lEBmo span').text().trim()      || 'N/A',
       Beds:    listing.find('[data-cy="property-beds"]').text().trim()               || 'N/A',
       Baths:   listing.find('[data-cy="property-baths"]').text().trim()              || 'N/A',
       Address: listing.find('[data-cy="property-address"]').text().trim()            || 'N/A',
     });
   });
-
   return out;
 }
 
-// run through all regions in series
-async function bootstrap() {
-  console.log('🕵️‍♀️  Starting scrape of all regions...');
-  for (const [region, url] of Object.entries(regions)) {
+// scrape all regions with given filters
+async function bootstrap(filters) {
+  console.log('🕵️‍♀️  Scraping with filters:', filters);
+  for (const [region, baseUrl] of Object.entries(regions)) {
     process.stdout.write(`  → ${region}… `);
     try {
-      const list = await scrapeListings(url /*, true if JS-heavy */);
-      allRegions[region] = list;
-      console.log(`${list.length} listings`);
+      allRegions[region] = await scrapeListings(baseUrl, filters /*, useJs? */);
+      console.log(`${allRegions[region].length} listings`);
     } catch (err) {
       console.error(`error (${err.message})`);
       allRegions[region] = [];
@@ -125,15 +123,20 @@ async function bootstrap() {
   console.log('✅ Scrape complete');
 }
 
-// GET home page
+// GET home: render with current data & filters
 app.get('/', (req, res) => {
-  res.render('index', { data: allRegions });
+  res.render('index', {
+    data:    allRegions,
+    filters: currentFilters
+  });
 });
 
-// POST /refresh
+// POST refresh: accept new filters, re-scrape
 app.post('/refresh', async (req, res, next) => {
   try {
-    await bootstrap();
+    // override filters
+    currentFilters = { ...defaultFilters, ...req.body.filters };
+    await bootstrap(currentFilters);
     res.sendStatus(200);
   } catch (err) {
     next(err);
@@ -144,7 +147,7 @@ app.post('/refresh', async (req, res, next) => {
 var usersRouter = require('./routes/users');
 app.use('/users', usersRouter);
 
-// 404 handler
+// catch 404
 app.use(function(req, res, next) {
   next(createError(404));
 });
@@ -157,11 +160,11 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-// initial scrape, then listen
-bootstrap()
+// initial scrape then start server
+bootstrap(currentFilters)
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Server listening on http://localhost:${PORT}`);
+      console.log(`Server listening at http://localhost:${PORT}`);
     });
   })
   .catch(err => {

@@ -1,48 +1,55 @@
-
 doctype html
 html
   head
     meta(charset="UTF-8")
     meta(name="viewport", content="width=device-width, initial-scale=1")
-    title Alberta & Calgary Property Listings
+    title Canadian House Finder
     style.
       /* Base */
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        padding: 0;
-        background: #f4f4f4;
-        color: #333;
+        margin: 0; padding: 0;
+        background: #f4f4f4; color: #333;
       }
       h1 {
         text-align: center;
         margin: 1rem 0;
       }
       /* Controls */
-      #refreshBtn, #regionSelect {
-        display: block;
-        margin: 0.5rem auto;
-        padding: 0.6rem 1rem;
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 0 1rem;
+      }
+      .controls label {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.9rem;
+      }
+      .controls input, .controls select, .controls button {
+        padding: 0.4rem 0.6rem;
         font-size: 1rem;
-        border: 1px solid #007bff;
+        border: 1px solid #ccc;
         border-radius: 4px;
+        margin-top: 0.3rem;
+      }
+      .controls button {
         background: #007bff;
         color: white;
+        border: none;
         cursor: pointer;
       }
-      #regionSelect {
-        background: white;
-        color: #333;
+      .controls button:hover {
+        background: #0056b3;
       }
-      #refreshBtn:hover,
-      #regionSelect:hover {
-        opacity: 0.9;
-      }
-      /* Table layout */
+      /* Table */
       .table-container {
-        margin: 1rem auto;
         width: 95%;
         max-width: 1200px;
+        margin: auto;
         overflow-x: auto;
       }
       table.property-table {
@@ -81,24 +88,19 @@ html
         display: none;
         position: fixed;
         top: 0; left: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 100vw; height: 100vh;
         background: rgba(0,0,0,0.7);
+        align-items: center; justify-content: center;
         z-index: 1000;
-        align-items: center;
-        justify-content: center;
       }
       .modal-content {
         position: relative;
-        width: 90%;
-        max-width: 1000px;
+        width: 90%; max-width: 1000px;
         height: 80%;
         background: white;
         border-radius: 6px;
         overflow: hidden;
-        box-shadow: 0 0 15px rgba(0,0,0,0.5);
-        display: flex;
-        flex-direction: column;
+        display: flex; flex-direction: column;
       }
       .modal-content iframe {
         flex: 1;
@@ -106,14 +108,12 @@ html
       }
       .close-btn {
         position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
+        top: 0.5rem; right: 0.5rem;
         background: #dc3545;
         color: white;
         border: none;
         border-radius: 50%;
-        width: 2rem;
-        height: 2rem;
+        width: 2rem; height: 2rem;
         font-size: 1.2rem;
         line-height: 1.8rem;
         text-align: center;
@@ -124,32 +124,58 @@ html
       }
       /* Responsive */
       @media (max-width: 600px) {
-        th, td {
-          padding: 0.5rem;
-        }
-        #refreshBtn, #regionSelect {
+        .controls { flex-direction: column; align-items: center; }
+        .controls input, .controls select, .controls button {
           width: 90%;
-          font-size: 0.9rem;
         }
+        th, td { padding: 0.5rem; }
       }
 
   body
-    h1 Alberta & Calgary Property Listings
+    h1 Canadian House Finder
 
-    // Refresh button
-    button#refreshBtn(type="button") Grab Latest Houses
+    //- Filter and controls
+    .controls
+      label
+        | Min Price
+        input#priceMin(type="number", min="0", step="10000", value=filters.priceMin)
+      label
+        | Max Price
+        input#priceMax(type="number", min="0", step="10000", value=filters.priceMax)
+      label
+        | Min Beds
+        input#bedsMin(type="number", min="0", step="1", value=filters.bedsMin)
+      label
+        | Max Beds
+        input#bedsMax(type="number", min="0", step="1", value=filters.bedsMax)
+      label
+        | Baths (Index)
+        input#bathsIndex(type="number", min="0", step="1", value=filters.bathsIndex)
+      label
+        | Min SqFt
+        input#sqftMin(type="number", min="0", step="100", value=filters.sqftMin)
+      label
+        | Max SqFt
+        input#sqftMax(type="number", min="0", step="100", value=filters.sqftMax)
+      label
+        | House Only?
+        select#house
+          option(value="true",  selected=filters.house==='true')  Yes
+          option(value="false", selected=filters.house==='false') No
+      label
+        | Region
+        select#regionSelect
+          option(value="") -- all regions --
+          each listings, region in data
+            option(
+              value=region
+            )= region
+      button#refreshBtn(type="button") Grab Latest Houses
 
-    // Region dropdown
-    label(for="regionSelect")
-      strong Select a Region:
-    select#regionSelect
-      option(value="") -- Choose a Region --
-      each listings, region in data
-        option(value=region)= region
-
+    //- Table container
     .table-container
       each listings, region in data
-        - var slug = region.toLowerCase().replace(/[^\w]+/g, '-')
+        - var slug = region.toLowerCase().replace(/[^\w]+/g,'-')
         table.property-table(id='table-'+slug)
           thead
             tr
@@ -173,52 +199,65 @@ html
                     type="button",
                     data-modal='modal-'+slug+'-'+idx
                   ) Preview
-                  // Modal overlay
                   .modal-overlay(id='modal-'+slug+'-'+idx)
                     .modal-content
                       button.close-btn(
                         type="button",
                         data-modal='modal-'+slug+'-'+idx
                       ) ×
-                      iframe(
-                        src=item.URL,
-                        allow="autoplay; fullscreen; geolocation; microphone; camera; encrypted-media"
-                      )
+                      iframe(src=item.URL)
 
+    //- Client-side script
     script.
       (function(){
         const regionSelect = document.getElementById('regionSelect');
         const refreshBtn   = document.getElementById('refreshBtn');
 
-        // Show/hide the table
+        // show/hide the table
         regionSelect.addEventListener('change', () => {
-          document.querySelectorAll('table.property-table').forEach(t => t.style.display = 'none');
+          document.querySelectorAll('table.property-table')
+            .forEach(t => t.style.display = 'none');
           const sel = regionSelect.value.toLowerCase().replace(/[^\w]+/g,'-');
           const tbl = document.getElementById('table-'+sel);
           if (tbl) tbl.style.display = 'table';
         });
 
-        // Modal toggle on preview/close
+        // open/close modal
         document.body.addEventListener('click', e => {
-          const modalId = e.target.dataset.modal;
-          if (!modalId) return;
-          const overlay = document.getElementById(modalId);
+          const id = e.target.dataset.modal;
+          if (!id) return;
+          const overlay = document.getElementById(id);
           if (!overlay) return;
           overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
         });
 
-        // Refresh button logic
+        // refresh with filters
         refreshBtn.addEventListener('click', async () => {
-          refreshBtn.disabled = true;
+          const filters = {
+            priceMin:   document.getElementById('priceMin').value,
+            priceMax:   document.getElementById('priceMax').value,
+            bedsMin:    document.getElementById('bedsMin').value,
+            bedsMax:    document.getElementById('bedsMax').value,
+            bathsIndex: document.getElementById('bathsIndex').value,
+            sqftMin:    document.getElementById('sqftMin').value,
+            sqftMax:    document.getElementById('sqftMax').value,
+            house:      document.getElementById('house').value
+          };
+
+          refreshBtn.disabled   = true;
           refreshBtn.textContent = 'Fetching…';
           try {
-            const resp = await fetch('/refresh', { method: 'POST' });
+            const resp = await fetch('/refresh', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filters })
+            });
             if (!resp.ok) throw new Error(resp.statusText);
             window.location.reload();
-          } catch (err) {
+          } catch(err) {
             console.error(err);
-            alert('Failed to refresh listings.');
-            refreshBtn.disabled = false;
+            alert('Failed to update listings.');
+            refreshBtn.disabled   = false;
             refreshBtn.textContent = 'Grab Latest Houses';
           }
         });
