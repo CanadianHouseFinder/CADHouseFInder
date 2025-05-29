@@ -25,7 +25,7 @@ Repository: https://github.com/CanadianHouseFinder/CADHouseFInder
   git clone https://github.com/CanadianHouseFinder/CADHouseFInder.git
   ```
   ```sh
-    cd CADHouseFInder
+  cd CADHouseFInder
   ```
 
 3. Install dependencies
